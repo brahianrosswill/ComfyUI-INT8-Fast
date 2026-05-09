@@ -23,7 +23,6 @@ Pre-quantized checkpoints were recommended for most architectures, but on-the-fl
 However, ConvRot is also a little slower, so these prequantized models are still useful.
 
 **Shoutout to [vistralis](https://huggingface.co/vistralis) for these:** 
-Make sure to update the node to use them as int8 row-wise was added.
 
 | Model | Link |
 |-------|------|
