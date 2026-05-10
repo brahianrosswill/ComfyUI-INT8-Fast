@@ -66,7 +66,7 @@ Measured on an 8gb 5060, same settings:
 | int8 | 2.53 | 1.20× |
 | int8 compile | 2.25 | 1.35× |
 
-5060, Anima, Comfy version from 2026-05-02, Pytorch 2.11+CU13.0
+5060, Anima, Comfy version from 2026-05-02, Pytorch 2.11+CU13.0, latest kitchen triton and everything else
 
 | Format | Speed (it/s) |
 |-------|--------------|
