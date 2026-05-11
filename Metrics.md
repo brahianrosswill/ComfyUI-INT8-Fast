@@ -4,7 +4,9 @@ We capture the latents per step, and measure how much they diverge from the BF16
 ## Lora 
 
 In this table, we compare the quality of our various lora approaches, against a standard bf16 lora loader baseline.
-The TLDR is that Pre-Lora is within marging of error of Dynamic Lora. Post-Lora is slightly worse. GGUF Q8 dequantizes to bf16 during inference to apply the lora math which is both slow and cheating.
+The TLDR is that Pre-Lora is within marging of error of Dynamic Lora. Post-Lora is slightly worse. GGUF Q8 dequantizes to bf16 during inference to apply the lora math which is both slow and cheating. Nunchaku lora appears to be a little broken.
+
+Interesting observation: These consistently score higher than their non-lora counterparts. I suspect it could be that there is a QAT like effect for applying loras trained with quantization to quantized models.
 
 Anima:
 
@@ -27,6 +29,26 @@ Anima:
 
 > ★ = best value for that metric &nbsp;|&nbsp; ± = avg of per-timestep SE (std/√n\_seeds) `[--stratify-std]`
 
+
+
+Qwen Image 2512
+
+| Metric | FP8 | GGUF Q4 K M | GGUF Q8 | INT8 ConvRot Post-Lora | INT8 ConvRot Pre-Lora | Nunchaku_BestQuality |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| MSE ↓ | `0.01139 ±0.00146` | `0.00874 ±0.00147` | `0.00135 ±0.00058` | `0.00185 ±0.00050` | `0.00111 ±0.00032` ★ | `0.04326 ±0.00328` |
+| MAE ↓ | `0.06940 ±0.00369` | `0.05205 ±0.00418` | `0.01490 ±0.00233` ★ | `0.02129 ±0.00215` | `0.01637 ±0.00156` | `0.14596 ±0.00556` |
+| Max err ↓ | `0.83818 ±0.05885` | `0.68868 ±0.04720` | `0.37840 ±0.05948` ★ | `0.45491 ±0.05199` | `0.38492 ±0.03914` | `1.08649 ±0.03813` |
+| Rel-RMSE ↓ | `0.18603 ±0.01147` | `0.14543 ±0.01242` | `0.04687 ±0.00796` ★ | `0.06366 ±0.00756` | `0.05016 ±0.00546` | `0.36876 ±0.01457` |
+| SNR dB ↑ | `15.19 ±0.48` | `18.56 ±0.65` | `29.23 ±0.95` ★ | `25.81 ±0.80` | `27.56 ±0.70` | `9.33 ±0.35` |
+| Cos-sim ↑ | `0.957885 ±0.005072` | `0.971353 ±0.004980` | `0.995827 ±0.001845` | `0.993908 ±0.001672` | `0.996241 ±0.001149` ★ | `0.874391 ±0.010770` |
+| Var ratio →1 | `1.03367 ±0.00407` | `0.98059 ±0.00510` | `0.99394 ±0.00142` | `0.99124 ±0.00185` | `0.99651 ±0.00217` ★ | `1.17955 ±0.01708` |
+| Outlier% ↓ | `0.00016 ±0.00005` | `0.00008 ±0.00003` | `0.00002 ±0.00001` | `0.00002 ±0.00001` | `0.00001 ±0.00000` ★ | `0.00097 ±0.00018` |
+| Ch-MSE max ↓ | `0.02053 ±0.00283` | `0.01603 ±0.00271` | `0.00269 ±0.00108` | `0.00388 ±0.00111` | `0.00204 ±0.00053` ★ | `0.08783 ±0.00643` |
+| Ch-MSE std ↓ | `0.00464 ±0.00075` | `0.00399 ±0.00073` | `0.00067 ±0.00029` | `0.00089 ±0.00025` | `0.00048 ±0.00013` ★ | `0.02458 ±0.00197` |
+| ΔMSE/step ↓ | `0.000958 ±0.000252` | `0.001059 ±0.000261` | `0.000183 ±0.000087` | `0.000237 ±0.000087` | `0.000152 ±0.000071` ★ | `0.003098 ±0.000772` |
+| ΔCos/step ↑ | `-0.0007560 ±0.0012897` | `-0.0025382 ±0.0009487` | `-0.0004476 ±0.0002795` | `-0.0005603 ±0.0003156` | `-0.0003486 ±0.0002816` ★ | `-0.0054101 ±0.0030137` |
+
+> ★ = best value for that metric &nbsp;|&nbsp; ± = avg of per-timestep SE (std/√n\_seeds) `[--stratify-std]`
 
 
 ## General Model Quality
