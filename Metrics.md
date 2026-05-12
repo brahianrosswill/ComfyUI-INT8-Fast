@@ -246,6 +246,6 @@ FP8 Naive refers to using a BF16 checkpoint with the dtype set to FP8, which nai
 > ★ = best value for that metric &nbsp;|&nbsp; ± = avg of per-timestep SE (std/√n\_seeds) `[--stratify-std]`
 
 
-#Collecting your own measurements:
+# Collecting your own measurements:
 
 Use this custom node: https://github.com/BobJohnson24/ComfyUI-EvalSampler
