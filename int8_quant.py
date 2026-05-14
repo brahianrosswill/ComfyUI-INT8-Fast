@@ -618,7 +618,7 @@ class INT8ModelPatcher(comfy.model_patcher.ModelPatcher):
                 finalized += 1
         if finalized > 0:
             self.size = 0
-            logging.info(f"INT8 Fast: Finalized {finalized} deferred INT8 layer(s) at model load time.")
+            #logging.info(f"INT8 Fast: Finalized {finalized} deferred INT8 layer(s) at model load time.")
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
