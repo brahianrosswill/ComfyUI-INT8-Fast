@@ -75,6 +75,14 @@ class INT8ModelSave:
                 seen_roots.add(root_id)
                 yield from root.named_modules()
         
+        # Finalize any deferred INT8 layers (Aimdo/Windows deferred-load path sets
+        # _pending_int8_finalize instead of quantizing immediately). Without this,
+        # those modules still have _is_quantized=False at save time and no
+        # comfy_quant keys are emitted.
+        finalize_fn = getattr(model, "finalize_pending_int8", None)
+        if finalize_fn is not None:
+            finalize_fn()
+
         # We need to peek at the model's actual modules to save comfy_quant and weight_scale
         if hasattr(model, "model"):
             for name, module in iter_model_modules(model):
@@ -83,6 +91,10 @@ class INT8ModelSave:
                     # with requires_grad=True by default, which is invalid for
                     # int8 tensors. Mark all int8 modules for direct save.
                     mark_module_for_direct_save(module)
+                
+                # Only log modules that are INT8-aware (have _is_quantized attribute)
+                if hasattr(module, '_is_quantized'):
+                    print(f"[INT8Save] int8 module: '{name}' | _is_quantized={module._is_quantized}")
 
                 if getattr(module, "_is_quantized", False):
                     # 1. Comfy Quant Hint
