@@ -236,6 +236,10 @@ if _COMFY_OPS_AVAILABLE:
                 return key
 
             @staticmethod
+            def _is_bias_key(key):
+                return isinstance(key, str) and key.endswith(".bias")
+
+            @staticmethod
             def _format_lora_patches(patches):
                 formatted = []
                 for patch in patches or []:
@@ -312,7 +316,7 @@ if _COMFY_OPS_AVAILABLE:
                     return self._normalize_lora_key(key)
 
                 def apply_lora_patches(tensor, key):
-                    if not Int8TensorwiseOps.lora_patches or tensor.dtype == torch.int8:
+                    if self._is_bias_key(key) or not Int8TensorwiseOps.lora_patches or tensor.dtype == torch.int8:
                         return tensor
                     nk = normalize_key(key)
                     patches = Int8TensorwiseOps.lora_patches.get(nk)
@@ -771,6 +775,9 @@ class INT8ModelPatcher(comfy.model_patcher.ModelPatcher):
         is_int8_module = hasattr(module, "_is_quantized") and module._is_quantized
         patches = self.patches.get(key, [])
 
+        if is_int8_module and Int8TensorwiseOps.Linear._is_bias_key(key):
+            return comfy.utils.get_attr(self.model, key) if return_weight else None
+
         if is_int8_module:
             if not Int8TensorwiseOps.dynamic_lora:
                 # --- BAKE-IN LORA PATH (Dequant → Patch → Quant) ---
@@ -932,7 +939,7 @@ class INT8ModelPatcher(comfy.model_patcher.ModelPatcher):
         for name, module in self.model.named_modules():
             if hasattr(module, "lora_patches") and module.lora_patches:
                 # If dynamic LoRA is disabled globally, or if this module has no active patches, clear them.
-                if not Int8TensorwiseOps.dynamic_lora or ((name + ".weight") not in self.patches and (name + ".bias") not in self.patches):
+                if not Int8TensorwiseOps.dynamic_lora or (name + ".weight") not in self.patches:
                     module.lora_patches = []
 
         res = super().load(*args, **kwargs) if hasattr(super(), "load") else None
@@ -942,7 +949,6 @@ class INT8ModelPatcher(comfy.model_patcher.ModelPatcher):
         for name, module in self.model.named_modules():
             if hasattr(module, "_is_quantized") and module._is_quantized:
                 weight_key = name + ".weight"
-                bias_key = name + ".bias"
                 
                 if weight_key in self.patches:
                     if Int8TensorwiseOps.dynamic_lora:
@@ -958,13 +964,6 @@ class INT8ModelPatcher(comfy.model_patcher.ModelPatcher):
                             module,
                             getattr(Int8TensorwiseOps, "lora_mode", "None"),
                         )
-                    
-                if bias_key in self.patches:
-                    if hasattr(module, "bias_lowvram_function"):
-                        module.bias_lowvram_function = None
-                    if hasattr(module, "bias_function"):
-                        module.bias_function = [f for f in getattr(module, "bias_function", []) if type(f).__name__ != "LowVramPatch"]
-                    self.patch_weight_to_device(bias_key, device_to=device_to)
                     
         return res
 
