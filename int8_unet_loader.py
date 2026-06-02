@@ -25,7 +25,7 @@ class UNetLoaderINTW8A8:
         return {
             "required": {
                 "unet_name": (folder_paths.get_filename_list("diffusion_models"),),
-                "weight_dtype": (["default", "fp8_e4m3fn", "fp16", "bf16"],),
+                "weight_dtype": (["default", "fp16", "bf16", "fp32"],),
                 "model_type": (["flux2", "z-image", "chroma", "wan", "ltx2", "qwen", "ernie", "anima", "hidream o1"], {"tooltip": "Only used for on the fly quantization, to filter sensitive layers."}),
                 "on_the_fly_quantization": ("BOOLEAN", {"default": False, "tooltip": "Quantize a higher precision model to INT8. If the selected model is already INT8 keep unchecked."}),
                 "enable_convrot": ("BOOLEAN", {"default": True, "tooltip": "Enable ConvRot for better quantization. ~1.1x slower, but near-GGUF_Q8 quality."}),
@@ -71,6 +71,13 @@ class UNetLoaderINTW8A8:
         Int8TensorwiseOps.lora_mode = lora_mode
         Int8TensorwiseOps.dynamic_lora = lora_mode == "Dynamic"
         Int8TensorwiseOps.dynamic_load_device = None
+        dtype_map = {
+            "fp16": torch.float16,
+            "bf16": torch.bfloat16,
+            "fp32": torch.float32,
+        }
+        # Legacy no-op values are treated as default so old workflows keep loading.
+        Int8TensorwiseOps.compute_dtype = dtype_map.get(str(weight_dtype), None)
         if comfy.memory_management.aimdo_enabled and (on_the_fly_quantization or len(loras_to_load) > 0):
             Int8TensorwiseOps.dynamic_load_device = comfy.model_management.get_torch_device()
             logging.info(f"INT8 Fast: Aimdo dynamic loading active, using {Int8TensorwiseOps.dynamic_load_device} as a per-layer bake/quant work device.")

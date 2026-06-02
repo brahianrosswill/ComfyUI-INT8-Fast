@@ -178,6 +178,7 @@ if _COMFY_OPS_AVAILABLE:
         dynamic_quantize = False # Manual toggle for on-the-fly quantization
         enable_convrot = False # Toggle for ConvRot Hadamard rotation
         use_triton = True  # Toggle for Triton fused kernel (mirrors _use_triton)
+        compute_dtype = None # Optional override for INT8 activation/output compute dtype
         _is_prequantized = False # Keep this as a status flag, but don't use for detection
         lora_mode = "None" # None/Stochastic bake into INT8 weights; Dynamic applies LoRA at inference
         dynamic_lora = False # If True, apply LoRA dynamically at inference; if False, bake into INT8 weights at load time
@@ -440,7 +441,7 @@ if _COMFY_OPS_AVAILABLE:
                             self.weight_scale = None
                             self._is_per_row = False if per_row_hint is None else per_row_hint
                             
-                    elif weight_tensor.dtype in (torch.float16, torch.bfloat16, torch.float32, torch.float8_e4m3fn):
+                    elif weight_tensor.dtype in (torch.float16, torch.bfloat16, torch.float32):
                         # Load High-Precision
                         is_excluded = any(ex in prefix for ex in Int8TensorwiseOps.excluded_names)
                         is_dim1 = self.in_features == 1 or self.out_features == 1 or weight_tensor.ndim == 1
@@ -619,15 +620,19 @@ if _COMFY_OPS_AVAILABLE:
                 if isinstance(w_scale, torch.Tensor) and w_scale.device != x.device:
                     w_scale = w_scale.to(x.device, non_blocking=True)
                 
-                compute_dtype = x.dtype if x.dtype in (torch.float16, torch.bfloat16) else torch.bfloat16
+                compute_dtype = Int8TensorwiseOps.compute_dtype
+                if compute_dtype is None:
+                    compute_dtype = x.dtype if x.dtype in (torch.float16, torch.bfloat16) else torch.bfloat16
                 
                 x_shape = x.shape
                 x_2d = x.reshape(-1, x_shape[-1])
+                if Int8TensorwiseOps.compute_dtype is not None and x_2d.dtype != compute_dtype:
+                    x_2d = x_2d.to(compute_dtype)
                 
                 if getattr(self, "_use_convrot", False):
                     from .convrot import build_hadamard, rotate_activation
                     group_size = getattr(self, "_convrot_groupsize", CONVROT_GROUP_SIZE)
-                    H = build_hadamard(group_size, device=x.device, dtype=x.dtype)
+                    H = build_hadamard(group_size, device=x.device, dtype=x_2d.dtype)
                     x_2d = rotate_activation(x_2d, H, group_size=group_size)
                 
                 # Sync the loader toggle to the module-level flag read by the forward fns
@@ -642,8 +647,8 @@ if _COMFY_OPS_AVAILABLE:
                         y = int8_forward_dynamic(x_2d, weight, w_scale, bias, compute_dtype)
                 else:
                     # Small batch fallback
-                    w_float = dequantize(weight, w_scale).to(x.dtype)
-                    bias_typed = bias.to(x.dtype) if bias is not None else None
+                    w_float = dequantize(weight, w_scale).to(x_2d.dtype)
+                    bias_typed = bias.to(x_2d.dtype) if bias is not None else None
                     y = F.linear(x_2d, w_float, bias_typed)
                 
                 # Dynamic LoRA Path — handles split QKV via per-patch offsets
