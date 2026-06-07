@@ -221,7 +221,7 @@ if _COMFY_OPS_AVAILABLE:
                 self._is_per_row = False  # Track quantization granularity
                 self._use_convrot = False  # Track if ConvRot was applied
                 self._weight_scale_scalar = None  # For scalar (non-tensor) scales
-                self.compute_dtype = torch.bfloat16
+                self.compute_dtype = None
                 self.comfy_cast_weights = False
                 self.lora_patches = []  # List of (down_scaled, up, start, size) set by INT8ModelPatcher
             
@@ -601,6 +601,10 @@ if _COMFY_OPS_AVAILABLE:
                         uncast_bias_weight(self, weight, bias, offload_stream)
                         return out
                     else:
+                        if x.device != self.weight.device or x.dtype != self.weight.dtype:
+                            weight = self.weight.to(device=x.device, dtype=x.dtype)
+                            bias = self.bias.to(device=x.device, dtype=x.dtype) if self.bias is not None else None
+                            return F.linear(x, weight, bias)
                         return F.linear(x, self.weight, self.bias)
                 
                 # INT8 quantized path
@@ -622,8 +626,9 @@ if _COMFY_OPS_AVAILABLE:
                 
                 compute_dtype = Int8TensorwiseOps.compute_dtype
                 if compute_dtype is None:
-                    compute_dtype = x.dtype if x.dtype in (torch.float16, torch.bfloat16) else torch.bfloat16
-                
+                    compute_dtype = x.dtype if x.dtype in (torch.float16, torch.bfloat16, torch.float32) else torch.float16
+                print("The dtype is: ", compute_dtype)
+
                 x_shape = x.shape
                 x_2d = x.reshape(-1, x_shape[-1])
                 if Int8TensorwiseOps.compute_dtype is not None and x_2d.dtype != compute_dtype:
