@@ -4,6 +4,7 @@ This node speeds up Flux2, Ideogram4, Chroma, Z-Image, Ernie Image in ComfyUI by
 Works with lora, torch compile.
 
 Further Reading:
+
 [Quality Metrics comparing against MXFP8, FP8, GGUF, etc.](Metrics.md)
 
 [Speed](Speed.md)
