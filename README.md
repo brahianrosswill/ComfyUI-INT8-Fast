@@ -53,7 +53,7 @@ For more info on quality of convrot, lora approaches see the [Metrics](Metrics.m
 
 # Common GPU related issues:
 
-RTX 20-Series will require you to either use Triton-Windows on windows, triton==3.2.0 or compile yourself with SM75 support which was dropped in 3.3.0.
+RTX 20-Series will require you to either use Triton-Windows on windows, triton==3.2.0 or compile triton yourself with SM75 support which was dropped in 3.3.0.
 
 A100 has no possible INT8 Speed-up https://github.com/BobJohnson24/ComfyUI-INT8-Fast/issues/71
 
